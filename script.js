@@ -1,29 +1,20 @@
 /**
- * APLICACIÓN LECTORA DE NFC
- * =========================
- * Esta aplicación web utiliza la API Web NFC para leer etiquetas NFC
- * directamente desde el navegador en dispositivos compatibles.
- * 
- * Requisitos:
- * - Dispositivo Android con Chrome 89 o superior
- * - Hardware NFC en el dispositivo
- * - Conexión HTTPS o localhost (requerido por la API Web NFC)
+ * APLICACIÓN LECTORA DE NFC - VERSIÓN MEJORADA
+ * ============================================
+ * Versión optimizada para extraer y analizar la máxima información posible
+ * de las etiquetas NFC usando la API Web NFC.
  */
 
 class NFCReader {
-    /**
-     * Constructor de la clase NFCReader
-     * Inicializa todas las referencias del DOM y configura los event listeners
-     */
     constructor() {
-        // Referencias a elementos del DOM para manipulación de la interfaz
+        // Referencias a elementos del DOM
         this.startButton = document.getElementById('startScan');
         this.stopButton = document.getElementById('stopScan');
         this.nfcStatus = document.getElementById('nfcStatus');
         this.tagInfo = document.getElementById('tagInfo');
         this.messageContainer = document.getElementById('messageContainer');
         
-        // Referencias a los campos de información de la etiqueta
+        // Referencias a campos de información
         this.tagType = document.getElementById('tagType');
         this.serialNumber = document.getElementById('serialNumber');
         this.technology = document.getElementById('technology');
@@ -32,39 +23,27 @@ class NFCReader {
         this.isReadOnly = document.getElementById('isReadOnly');
         this.canFormat = document.getElementById('canFormat');
         
-        // Variable para almacenar la referencia al lector NFC abort controller
+        // Variables para almacenar datos
         this.abortController = null;
+        this.currentTagData = null;
         
-        // Inicializar la aplicación
         this.init();
     }
     
-    /**
-     * Método de inicialización
-     * Configura los event listeners y verifica la disponibilidad de NFC
-     */
     init() {
-        // Verificar si la API Web NFC está disponible en el navegador
         this.checkNFCAvailability();
-        
-        // Configurar event listeners para los botones
         this.startButton.addEventListener('click', () => this.startScanning());
         this.stopButton.addEventListener('click', () => this.stopScanning());
     }
     
-    /**
-     * Verifica si el navegador y el dispositivo soportan NFC
-     * Actualiza la interfaz según el resultado
-     */
     checkNFCAvailability() {
-        // Verificar si el objeto NDEFReader existe en el navegador
         if (!('NDEFReader' in window)) {
             this.updateNFCStatus('unavailable', '❌ NFC no soportado');
             this.showMessage('Tu navegador no soporta la API Web NFC. Necesitas Chrome 89+ en Android.', 'error');
             return;
         }
         
-        // Verificar si hay permisos para usar NFC (si la API de permisos está disponible)
+        // Verificar si hay hardware NFC disponible
         if (navigator.permissions) {
             navigator.permissions.query({ name: 'nfc' })
                 .then(permissionStatus => {
@@ -72,169 +51,205 @@ class NFCReader {
                         this.enableNFC();
                     } else if (permissionStatus.state === 'prompt') {
                         this.enableNFC();
-                        this.showMessage('La aplicación necesita permiso para usar NFC. Se solicitará al iniciar el escaneo.', 'info');
+                        this.showMessage('La aplicación necesita permiso para usar NFC.', 'info');
                     } else {
                         this.updateNFCStatus('unavailable', '🔒 Permiso NFC denegado');
-                        this.showMessage('El permiso para usar NFC ha sido denegado. Por favor, verifica la configuración de tu navegador.', 'error');
                     }
-                    
-                    // Escuchar cambios en el estado del permiso
-                    permissionStatus.addEventListener('change', () => {
-                        this.checkNFCAvailability();
-                    });
                 })
                 .catch(() => {
-                    // Si la API de permisos falla, asumimos que NFC podría estar disponible
                     this.enableNFC();
                 });
         } else {
-            // Si no hay API de permisos, habilitamos NFC de todos modos
             this.enableNFC();
         }
     }
     
-    /**
-     * Habilita la funcionalidad NFC y actualiza la interfaz
-     */
     enableNFC() {
         this.updateNFCStatus('available', '✅ NFC Disponible');
         this.startButton.disabled = false;
-        this.showMessage('¡NFC está disponible! Presiona "Iniciar Escaneo" para comenzar a leer etiquetas.', 'success');
     }
     
-    /**
-     * Actualiza el indicador de estado de NFC en la interfaz
-     * @param {string} status - Clase CSS para el estado ('available', 'unavailable', 'scanning')
-     * @param {string} text - Texto a mostrar en el indicador
-     */
     updateNFCStatus(status, text) {
-        // Remover todas las clases de estado previas
         this.nfcStatus.className = 'status-badge';
-        // Agregar la nueva clase de estado
         this.nfcStatus.classList.add(status);
-        // Actualizar el texto del indicador
         this.nfcStatus.querySelector('.status-text').textContent = text;
     }
     
-    /**
-     * Inicia el proceso de escaneo NFC
-     * Crea una nueva instancia de NDEFReader y comienza a escuchar
-     */
     async startScanning() {
         try {
-            // Crear un nuevo controlador para poder abortar el escaneo
             this.abortController = new AbortController();
-            
-            // Crear instancia del lector NDEF
             const ndef = new NDEFReader();
             
-            // Actualizar interfaz para mostrar estado de escaneo
             this.updateNFCStatus('scanning', '📡 Escaneando...');
             this.startButton.disabled = true;
             this.stopButton.disabled = false;
-            this.showMessage('Acerca una etiqueta NFC a la parte trasera de tu dispositivo...', 'info');
+            this.showMessage('Acerca una etiqueta NFC a tu dispositivo...', 'info');
             this.tagInfo.classList.add('hidden');
             
-            // Iniciar el escaneo
             await ndef.scan({ signal: this.abortController.signal });
             
-            this.showMessage('✅ Escaneo iniciado correctamente. Esperando etiquetas NFC...', 'success');
+            this.showMessage('✅ Escaneo iniciado. Esperando etiquetas...', 'success');
             
-            // Configurar manejadores de eventos para lectura de etiquetas
             ndef.addEventListener("reading", ({ message, serialNumber }) => {
                 this.handleTagRead(serialNumber, message);
             });
             
-            // Manejar errores durante la lectura
             ndef.addEventListener("readingerror", (event) => {
-                this.showMessage('Error al leer la etiqueta NFC. Intenta de nuevo.', 'error');
-                console.error('Error de lectura NFC:', event);
+                this.showMessage('Error al leer la etiqueta. Intenta de nuevo.', 'error');
+                console.error('Error de lectura:', event);
             });
             
         } catch (error) {
-            // Manejar diferentes tipos de errores
-            console.error('Error al iniciar escaneo NFC:', error);
-            
+            console.error('Error:', error);
             if (error.name === 'AbortError') {
-                this.showMessage('Escaneo detenido por el usuario.', 'info');
+                this.showMessage('Escaneo detenido.', 'info');
             } else if (error.name === 'NotAllowedError') {
-                this.showMessage('Permiso para usar NFC denegado. Por favor, concede el permiso e intenta de nuevo.', 'error');
+                this.showMessage('Permiso NFC denegado.', 'error');
             } else if (error.name === 'NotSupportedError') {
-                this.showMessage('Tu dispositivo no soporta la lectura NFC o la funcionalidad está desactivada.', 'error');
+                this.showMessage('NFC no soportado o desactivado.', 'error');
             } else {
-                this.showMessage(`Error inesperado: ${error.message}`, 'error');
+                this.showMessage(`Error: ${error.message}`, 'error');
             }
-            
-            // Restaurar la interfaz
             this.resetUI();
         }
     }
     
     /**
-     * Procesa la información de una etiqueta NFC leída
-     * @param {string} serialNumber - Número de serie de la etiqueta
-     * @param {NDEFMessage} message - Mensaje NDEF completo
+     * MÉTODO MEJORADO: Análisis detallado de la etiqueta NFC
+     * Extrae y analiza toda la información disponible de la etiqueta
      */
     handleTagRead(serialNumber, message) {
+        // Almacenar datos para análisis
+        this.currentTagData = {
+            serialNumber: serialNumber,
+            message: message,
+            records: message.records || [],
+            timestamp: new Date()
+        };
+        
         // Hacer visible la sección de información
         this.tagInfo.classList.remove('hidden');
         
-        // Actualizar información básica de la etiqueta
-        this.serialNumber.textContent = serialNumber;
-        this.tagType.textContent = this.determineTagType(message);
-        this.technology.textContent = 'NFC Forum Type 2/4/5'; // Genérico ya que Web NFC no expone esto
+        // 1. ANÁLISIS DEL NÚMERO DE SERIE
+        this.analyzeSerialNumber(serialNumber);
         
-        // Procesar registros NDEF
+        // 2. ANÁLISIS DEL MENSAJE NDEF
+        this.analyzeNDEFMessage(message);
+        
+        // 3. ANÁLISIS DE REGISTROS
         this.processNDEFRecords(message.records);
         
-        // Actualizar detalles técnicos (valores típicos, Web NFC no expone todos)
-        this.maxSize.textContent = 'Variable (depende del tipo de etiqueta)';
-        this.isReadOnly.textContent = 'No disponible en Web NFC';
-        this.canFormat.textContent = 'No disponible en Web NFC';
+        // 4. ANÁLISIS TÉCNICO INFERIDO
+        this.analyzeTechnicalDetails(message);
         
-        // Mostrar mensaje de éxito
-        this.showMessage('✅ ¡Etiqueta NFC leída exitosamente!', 'success');
-        
-        // Hacer vibrar el dispositivo si está disponible (feedback háptico)
+        // Feedback háptico
         if (navigator.vibrate) {
             navigator.vibrate(100);
         }
+        
+        this.showMessage('✅ ¡Etiqueta NFC leída exitosamente!', 'success');
     }
     
     /**
-     * Determina el tipo de etiqueta basado en los registros NDEF
-     * @param {NDEFMessage} message - Mensaje NDEF
-     * @returns {string} - Tipo de etiqueta determinado
+     * Analiza el número de serie para inferir información del fabricante
      */
-    determineTagType(message) {
-        if (!message.records || message.records.length === 0) {
-            return 'Etiqueta vacía o no NDEF';
+    analyzeSerialNumber(serialNumber) {
+        this.serialNumber.textContent = serialNumber;
+        
+        // Análisis del número de serie
+        const serialClean = serialNumber.replace(/[:\s]/g, '').toUpperCase();
+        
+        // Detectar fabricante por prefijo del número de serie
+        let manufacturer = 'Desconocido';
+        let chipType = 'No determinado';
+        
+        if (serialClean.startsWith('04')) {
+            manufacturer = 'NXP Semiconductors';
+            
+            // Análisis más detallado para chips NXP comunes
+            const serialBytes = serialClean.match(/.{1,2}/g) || [];
+            
+            if (serialBytes.length >= 7) {
+                const byte0 = parseInt(serialBytes[0], 16);
+                const byte1 = parseInt(serialBytes[1], 16);
+                const byte2 = parseInt(serialBytes[2], 16);
+                
+                // Identificación de chips NXP comunes
+                if (byte1 === 0x01) {
+                    if (byte2 >= 0x10 && byte2 <= 0x13) {
+                        chipType = 'NTAG210/212 (48-164 bytes)';
+                    } else if (byte2 >= 0x14 && byte2 <= 0x17) {
+                        chipType = 'NTAG213 (144 bytes)';
+                    } else if (byte2 >= 0x18 && byte2 <= 0x1B) {
+                        chipType = 'NTAG215 (504 bytes)';
+                    } else if (byte2 >= 0x1C && byte2 <= 0x1F) {
+                        chipType = 'NTAG216 (888 bytes)';
+                    }
+                }
+            }
+        } else if (serialClean.startsWith('08')) {
+            manufacturer = 'STMicroelectronics';
+        } else if (serialClean.startsWith('24')) {
+            manufacturer = 'Infineon Technologies';
         }
         
-        // Analizar los tipos de registros para determinar el tipo de etiqueta
-        const recordTypes = message.records.map(record => record.recordType);
-        
-        if (recordTypes.includes('smart-poster')) {
-            return 'Smart Poster';
-        } else if (recordTypes.includes('url')) {
-            return 'Etiqueta URL';
-        } else if (recordTypes.includes('text')) {
-            return 'Etiqueta de Texto';
-        } else if (recordTypes.includes('mime')) {
-            return 'Etiqueta MIME';
-        } else if (recordTypes.includes('empty')) {
-            return 'Etiqueta Vacía';
-        }
-        
-        return 'Etiqueta NDEF Genérica';
+        // Actualizar UI con información del fabricante
+        this.tagType.innerHTML = `
+            <div style="margin-bottom: 10px;">
+                <strong>Chip Probable:</strong> ${chipType}
+            </div>
+            <div style="color: #7f8c8d; font-size: 0.9em;">
+                <strong>Fabricante:</strong> ${manufacturer}
+            </div>
+            <div style="color: #95a5a6; font-size: 0.8em; margin-top: 5px;">
+                📝 Esta información es inferida del número de serie y puede no ser 100% precisa
+            </div>
+        `;
     }
     
     /**
-     * Procesa y muestra los registros NDEF de la etiqueta
-     * @param {Array} records - Array de registros NDEF
+     * Analiza el mensaje NDEF completo
+     */
+    analyzeNDEFMessage(message) {
+        const records = message.records || [];
+        
+        // Calcular uso de memoria aproximado
+        let totalDataSize = 0;
+        records.forEach(record => {
+            if (record.data) {
+                totalDataSize += record.data.byteLength;
+            }
+        });
+        
+        // Mostrar información de uso
+        this.technology.innerHTML = `
+            <strong>Registros NDEF:</strong> ${records.length}<br>
+            <strong>Datos totales:</strong> ${totalDataSize} bytes<br>
+            <strong>Tipo de mensaje:</strong> ${this.determineMessageType(records)}
+        `;
+    }
+    
+    /**
+     * Determina el tipo de mensaje basado en los registros
+     */
+    determineMessageType(records) {
+        if (!records || records.length === 0) return 'Etiqueta vacía';
+        
+        const types = records.map(r => r.recordType);
+        
+        if (types.includes('smart-poster')) return 'Smart Poster';
+        if (types.includes('url') || types.includes('absolute-url')) return 'Etiqueta URL';
+        if (types.includes('text')) return 'Etiqueta de Texto';
+        if (types.includes('mime')) return 'Etiqueta MIME';
+        if (types.includes('empty')) return 'Etiqueta Vacía';
+        
+        return 'Mixta/Personalizada';
+    }
+    
+    /**
+     * Procesa y muestra los registros NDEF con máximo detalle
      */
     processNDEFRecords(records) {
-        // Limpiar el contenedor de registros
         this.ndefRecords.innerHTML = '';
         
         if (!records || records.length === 0) {
@@ -242,134 +257,205 @@ class NFCReader {
             return;
         }
         
-        // Procesar cada registro NDEF
         records.forEach((record, index) => {
-            const recordElement = this.createRecordElement(record, index);
+            const recordElement = this.createDetailedRecordElement(record, index);
             this.ndefRecords.appendChild(recordElement);
         });
     }
     
     /**
-     * Crea un elemento DOM para un registro NDEF individual
-     * @param {NDEFRecord} record - Registro NDEF individual
-     * @param {number} index - Índice del registro en el mensaje
-     * @returns {HTMLElement} - Elemento DOM del registro
+     * Crea un elemento detallado para cada registro NDEF
      */
-    createRecordElement(record, index) {
+    createDetailedRecordElement(record, index) {
         const recordDiv = document.createElement('div');
         recordDiv.className = 'ndef-record';
         
-        // Determinar el tipo de registro de manera legible
-        let recordTypeText = record.recordType;
-        switch (record.recordType) {
-            case 'empty':
-                recordTypeText = 'Vacío';
-                break;
-            case 'text':
-                recordTypeText = 'Texto';
-                break;
-            case 'url':
-                recordTypeText = 'URL';
-                break;
-            case 'smart-poster':
-                recordTypeText = 'Smart Poster';
-                break;
-            case 'mime':
-                recordTypeText = `MIME (${record.mediaType || 'desconocido'})`;
-                break;
-            case 'absolute-url':
-                recordTypeText = 'URL Absoluta';
-                break;
-        }
-        
-        // Decodificar y procesar los datos del registro
-        let recordData = 'Datos no disponibles';
-        
-        try {
-            // Intentar diferentes métodos de decodificación según el tipo
-            if (record.recordType === 'text') {
-                const textDecoder = new TextDecoder(record.encoding || 'utf-8');
-                recordData = textDecoder.decode(record.data);
-            } else if (record.recordType === 'url' || record.recordType === 'absolute-url') {
-                const textDecoder = new TextDecoder();
-                recordData = textDecoder.decode(record.data);
-                // Si es una URL, hacerla cliqueable visualmente
-                if (this.isValidURL(recordData)) {
-                    recordData = `<a href="${recordData}" target="_blank" rel="noopener noreferrer">${recordData}</a>`;
-                }
-            } else if (record.data) {
-                // Para otros tipos, mostrar datos en bruto
-                const textDecoder = new TextDecoder();
-                recordData = textDecoder.decode(record.data);
-            }
-        } catch (e) {
-            console.warn('Error decodificando registro NDEF:', e);
-            recordData = 'Error al decodificar los datos';
-        }
-        
-        // Construir el HTML del registro
-        recordDiv.innerHTML = `
+        // Información completa del registro
+        let html = `
             <div class="record-header">
-                <span class="record-type">${recordTypeText}</span>
+                <span class="record-type">${this.getRecordTypeName(record)}</span>
                 <span class="record-index">Registro #${index + 1}</span>
             </div>
-            <div class="record-data">${recordData}</div>
-            ${record.mediaType ? `<div class="record-meta">Media Type: ${record.mediaType}</div>` : ''}
-            ${record.id ? `<div class="record-meta">ID: ${record.id}</div>` : ''}
         `;
         
+        // Datos del registro según su tipo
+        html += `<div class="record-data-details">`;
+        
+        // Procesar datos según el tipo de registro
+        if (record.recordType === 'text') {
+            const textDecoder = new TextDecoder(record.encoding || 'utf-8');
+            const text = textDecoder.decode(record.data);
+            
+            html += `
+                <div class="detail-row">
+                    <span class="detail-label">📝 Texto:</span>
+                    <span class="detail-value">${text}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">🌐 Idioma:</span>
+                    <span class="detail-value">${record.lang || 'No especificado'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">🔤 Codificación:</span>
+                    <span class="detail-value">${record.encoding || 'utf-8'}</span>
+                </div>
+            `;
+        } else if (record.recordType === 'url' || record.recordType === 'absolute-url') {
+            const textDecoder = new TextDecoder();
+            const url = textDecoder.decode(record.data);
+            
+            html += `
+                <div class="detail-row">
+                    <span class="detail-label">🔗 URL:</span>
+                    <span class="detail-value">
+                        <a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>
+                    </span>
+                </div>
+            `;
+        } else if (record.recordType === 'mime') {
+            html += `
+                <div class="detail-row">
+                    <span class="detail-label">📦 Tipo MIME:</span>
+                    <span class="detail-value">${record.mediaType || 'desconocido'}</span>
+                </div>
+            `;
+            
+            if (record.data) {
+                html += `
+                    <div class="detail-row">
+                        <span class="detail-label">📏 Tamaño:</span>
+                        <span class="detail-value">${record.data.byteLength} bytes</span>
+                    </div>
+                `;
+            }
+        }
+        
+        // Información común a todos los registros
+        if (record.data) {
+            html += `
+                <div class="detail-row">
+                    <span class="detail-label">📏 Tamaño de datos:</span>
+                    <span class="detail-value">${record.data.byteLength} bytes</span>
+                </div>
+            `;
+        }
+        
+        if (record.id) {
+            html += `
+                <div class="detail-row">
+                    <span class="detail-label">🆔 ID:</span>
+                    <span class="detail-value">${record.id}</span>
+                </div>
+            `;
+        }
+        
+        // Mostrar datos en bruto (hexadecimal)
+        if (record.data) {
+            const dataView = new Uint8Array(record.data.buffer);
+            const hexString = Array.from(dataView)
+                .slice(0, 32) // Primeros 32 bytes
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join(' ');
+            
+            html += `
+                <div class="detail-row">
+                    <span class="detail-label">🔢 Datos (hex):</span>
+                    <span class="detail-value hex-data">${hexString}${dataView.length > 32 ? '...' : ''}</span>
+                </div>
+            `;
+        }
+        
+        html += `</div>`;
+        
+        recordDiv.innerHTML = html;
         return recordDiv;
     }
     
     /**
-     * Verifica si una cadena es una URL válida
-     * @param {string} string - Cadena a verificar
-     * @returns {boolean} - True si es una URL válida
+     * Obtiene un nombre descriptivo para el tipo de registro
      */
-    isValidURL(string) {
-        try {
-            new URL(string);
-            return true;
-        } catch (_) {
-            return false;
-        }
+    getRecordTypeName(record) {
+        const typeMap = {
+            'empty': '🏷️ Vacío',
+            'text': '📝 Texto',
+            'url': '🔗 URL',
+            'absolute-url': '🔗 URL Absoluta',
+            'smart-poster': '📊 Smart Poster',
+            'mime': '📦 Datos MIME',
+            'unknown': '❓ Desconocido'
+        };
+        
+        return typeMap[record.recordType] || `📋 ${record.recordType}`;
     }
     
     /**
-     * Detiene el proceso de escaneo NFC
+     * Análisis técnico inferido de la etiqueta
      */
+    analyzeTechnicalDetails(message) {
+        const records = message.records || [];
+        
+        // Calcular tamaño total de datos
+        let totalSize = 0;
+        records.forEach(record => {
+            if (record.data) {
+                totalSize += record.data.byteLength;
+            }
+        });
+        
+        // Estimar capacidad de la etiqueta basado en el tipo de chip detectado
+        let estimatedCapacity = 'Desconocida';
+        let isFormateable = 'Probablemente sí';
+        
+        // Si detectamos un chip NXP específico, podemos estimar
+        const serialClean = this.currentTagData.serialNumber.replace(/[:\s]/g, '').toUpperCase();
+        const serialBytes = serialClean.match(/.{1,2}/g) || [];
+        
+        if (serialBytes.length >= 3 && serialBytes[0] === '04') {
+            const byte2 = parseInt(serialBytes[2], 16);
+            
+            if (byte2 >= 0x14 && byte2 <= 0x17) {
+                estimatedCapacity = '144 bytes (NTAG213)';
+                isFormateable = 'Sí (NTAG213 es regrabable)';
+            } else if (byte2 >= 0x18 && byte2 <= 0x1B) {
+                estimatedCapacity = '504 bytes (NTAG215)';
+                isFormateable = 'Sí (NTAG215 es regrabable)';
+            } else if (byte2 >= 0x1C && byte2 <= 0x1F) {
+                estimatedCapacity = '888 bytes (NTAG216)';
+                isFormateable = 'Sí (NTAG216 es regrabable)';
+            }
+        }
+        
+        // Mostrar información técnica
+        this.maxSize.innerHTML = `
+            <strong>Capacidad estimada:</strong> ${estimatedCapacity}<br>
+            <strong>Datos actuales:</strong> ${totalSize} bytes (${((totalSize / parseInt(estimatedCapacity) * 100) || 0).toFixed(1)}% usado)<br>
+            <span style="color: #95a5a6; font-size: 0.8em;">⚠️ La capacidad exacta no es accesible mediante Web NFC</span>
+        `;
+        
+        this.isReadOnly.textContent = 'No determinable con Web NFC';
+        this.canFormat.textContent = isFormateable;
+    }
+    
     stopScanning() {
         if (this.abortController) {
-            // Abortar la operación de escaneo
             this.abortController.abort();
             this.abortController = null;
         }
-        
-        // Restaurar la interfaz de usuario
         this.resetUI();
         this.showMessage('Escaneo detenido.', 'info');
     }
     
-    /**
-     * Restaura la interfaz de usuario a su estado inicial
-     */
     resetUI() {
         this.updateNFCStatus('available', '✅ NFC Disponible');
         this.startButton.disabled = false;
         this.stopButton.disabled = true;
     }
     
-    /**
-     * Muestra un mensaje en el contenedor de mensajes
-     * @param {string} message - Texto del mensaje
-     * @param {string} type - Tipo de mensaje ('error', 'success', 'info')
-     */
     showMessage(message, type = 'info') {
         this.messageContainer.textContent = message;
         this.messageContainer.className = 'message-container';
         this.messageContainer.classList.add(type);
         
-        // Auto-ocultar mensajes de éxito después de 5 segundos
         if (type === 'success') {
             setTimeout(() => {
                 if (this.messageContainer.textContent === message) {
@@ -380,22 +466,7 @@ class NFCReader {
     }
 }
 
-/**
- * Inicialización de la aplicación
- * Espera a que el DOM esté completamente cargado antes de instanciar el lector NFC
- */
+// Inicialización
 document.addEventListener('DOMContentLoaded', () => {
-    // Crear instancia del lector NFC
     window.nfcReader = new NFCReader();
-    
-    // Registrar Service Worker para funcionalidad PWA (opcional)
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js')
-            .then(registration => {
-                console.log('Service Worker registrado exitosamente:', registration);
-            })
-            .catch(error => {
-                console.log('Error al registrar Service Worker:', error);
-            });
-    }
 });
