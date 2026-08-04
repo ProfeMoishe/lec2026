@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lector NFC - Web App</title>
+    <!-- Vinculación con la hoja de estilos CSS -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- Manifest para PWA (opcional pero recomendado) -->
+    <link rel="manifest" href="manifest.json">
+    <!-- Tema de color para navegadores móviles -->
+    <meta name="theme-color" content="#2c3e50">
+    <!-- Icono para dispositivos Apple -->
+    <link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+    <!-- Contenedor principal de la aplicación -->
+    <div class="container">
+        <!-- Cabecera con información del estado -->
+        <header class="header">
+            <h1>📱 Lector NFC</h1>
+            <p class="subtitle">Acerca una etiqueta NFC a tu dispositivo</p>
+        </header>
+
+        <!-- Indicador de estado de NFC -->
+        <div class="status-container">
+            <div id="nfcStatus" class="status-badge unavailable">
+                <span class="status-icon">⭕</span>
+                <span class="status-text">Verificando NFC...</span>
+            </div>
+        </div>
+
+        <!-- Botones de acción principales -->
+        <div class="actions">
+            <button id="startScan" class="btn btn-primary" disabled>
+                <span class="btn-icon">📡</span>
+                Iniciar Escaneo
+            </button>
+            <button id="stopScan" class="btn btn-secondary" disabled>
+                <span class="btn-icon">⏹️</span>
+                Detener Escaneo
+            </button>
+        </div>
+
+        <!-- Área de visualización de datos -->
+        <div class="data-display">
+            <!-- Sección de mensajes y errores -->
+            <div id="messageContainer" class="message-container"></div>
+            
+            <!-- Contenedor de información detallada de la etiqueta -->
+            <div id="tagInfo" class="tag-info hidden">
+                <h2>📋 Información de la Etiqueta</h2>
+                
+                <!-- Información básica de la etiqueta -->
+                <div class="info-section">
+                    <h3>🔍 Datos Básicos</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Tipo de Etiqueta:</span>
+                            <span id="tagType" class="info-value"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">ID de Serie:</span>
+                            <span id="serialNumber" class="info-value"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Tecnología:</span>
+                            <span id="technology" class="info-value"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Registros NDEF encontrados -->
+                <div class="info-section">
+                    <h3>📦 Registros NDEF</h3>
+                    <div id="ndefRecords" class="records-container">
+                        <p class="placeholder">No hay registros NDEF disponibles</p>
+                    </div>
+                </div>
+
+                <!-- Detalles técnicos adicionales -->
+                <div class="info-section">
+                    <h3>⚙️ Detalles Técnicos</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Tamaño Máximo:</span>
+                            <span id="maxSize" class="info-value"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Solo Lectura:</span>
+                            <span id="isReadOnly" class="info-value"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Formateable:</span>
+                            <span id="canFormat" class="info-value"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vinculación con el archivo JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
